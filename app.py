@@ -9,17 +9,20 @@ def chat_with_gpt3(prompt):
     response = openai.ChatCompletion.create(
         model=model_engine,
         messages=[{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": f"{prompt}"}],
-        max_tokens=100,
+        max_tokens=1000,
         n=1,
         stop=None,
         temperature=0.8,
+        top_p=1.0,
+        frequency_penalty=0.0,
+        presence_penalty=0.0,
     )
 
     message = response['choices'][0]['message']['content'].strip()
     return message
 
 st.title("ChatGPT with Streamlit")
-user_input = st.text_input("Ask a question, enter a conversation or request a translation:")
+user_input = st.text_area("Ask a question, enter a conversation or request a translation:", height=150)
 submit_button = st.button("Submit")
 
 if submit_button:
