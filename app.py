@@ -9,10 +9,10 @@ def chat_with_gpt3(prompt):
     response = openai.ChatCompletion.create(
         model=model_engine,
         messages=[{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": f"{prompt}"}],
-        max_tokens=1000,
+        max_tokens=2000,
         n=1,
         stop=None,
-        temperature=0.8,
+        temperature=1.0,
         top_p=1.0,
         frequency_penalty=0.0,
         presence_penalty=0.0,
