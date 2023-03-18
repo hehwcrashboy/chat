@@ -15,7 +15,7 @@ def chat_with_gpt3(prompt):
         temperature=0.8,
     )
 
-    message = response.choices[0].text.strip()
+    message = response['choices'][0]['message']['content'].strip()
     return message
 
 st.title("ChatGPT with Streamlit")
