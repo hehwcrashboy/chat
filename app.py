@@ -74,11 +74,12 @@ if submit_button:
     response = chat_with_gpt3(st.session_state.chat_history)
     st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-    # Display the conversation
-    for message in st.session_state.chat_history:
-        if message["role"] == "user":
-            st.write(f"<strong>{message['role'].capitalize()}</strong>: {message['content']}", unsafe_allow_html=True)
-        else:
-            st.write(f"{message['role'].capitalize()}: {message['content']}")
     # Clear the user input
     user_input = ""
+
+# Display the conversation
+for message in st.session_state.chat_history:
+    if message["role"] == "user":
+        st.write(f"Me: {message['content']}")
+    else:
+        st.write(f"chatgpt: {message['content']}")
