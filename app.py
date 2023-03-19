@@ -73,6 +73,7 @@ def display_conversation():
 
 display_conversation()
 
+input_container = st.empty()
 user_input = input_container.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="bottom_user_input")
 submit_button = st.button("Submit", key="submit_button")
 
