@@ -1,37 +1,31 @@
 import openai
 import streamlit as st
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModel
 import torch
 
-# Initialize chat history
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [{"role": "system", "content": "You are a helpful assistant."}]
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-tokenizer = AutoTokenizer.from_pretrained("bert-base-cased-finetuned-mrpc")
-model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased-finetuned-mrpc")
+def calculate_similarity(text1, text2):
+    model_name = "sentence-transformers/paraphrase-MiniLM-L6-v2"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModel.from_pretrained(model_name)
 
-def is_question_related(new_question, chat_history):
-    threshold = 0.85
-    # Retrieve the last user message from chat history
-    last_user_message = ""
-    for message in reversed(chat_history):
-        if message["role"] == "user":
-            last_user_message = message["content"]
-            break
+    inputs1 = tokenizer(text1, return_tensors="pt", truncation=True, padding=True)
+    inputs2 = tokenizer(text2, return_tensors="pt", truncation=True, padding=True)
 
-    # If there is no previous user message, return False
-    if not last_user_message:
-        return False
-
-    # Compute the similarity between the new question and the last user message
-    text_pair = [new_question, last_user_message]
-    encoded_input = tokenizer(text_pair, padding=True, truncation=True, return_tensors="pt")
     with torch.no_grad():
-        scores = model(**encoded_input)[0]
+        outputs1 = model(**inputs1)
+        outputs2 = model(**inputs2)
 
-    similarity_score = torch.softmax(scores, dim=1).tolist()[0][1]
+    embeddings1 = outputs1.last_hidden_state.mean(dim=1)
+    embeddings2 = outputs2.last_hidden_state.mean(dim=1)
 
-    return similarity_score > threshold
+    cosine_sim = torch.nn.functional.cosine_similarity(embeddings1, embeddings2).item()
+    return cosine_sim
+
+def is_question_related(new_question, previous_question, threshold=0.6):
+    similarity = calculate_similarity(new_question, previous_question)
+    return similarity >= threshold
 
 def chat_with_gpt3(messages):
     model_engine = "gpt-3.5-turbo"
@@ -53,37 +47,38 @@ def chat_with_gpt3(messages):
 
 st.title("ChatGPT with Streamlit")
 
-user_input = st.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="user_input")
-submit_button = st.button("Submit", key="submit_button")
+# Initialize chat history
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [{"role": "system", "content": "You are a helpful assistant."}]
+
+user_input = st.text_area("Ask a question, enter a conversation, or request a translation:", height=150)
+submit_button = st.button("Submit")
 
 if submit_button:
-    # Add user message to chat history
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    previous_question = st.session_state.chat_history[-1]['content'] if st.session_state.chat_history[-1]['role'] == "user" else ""
+    is_related = is_question_related(user_input, previous_question) if previous_question else True
+
+    if is_related:
+        # Add user message to chat history
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+    else:
+        # Reset chat history and start with a new context
+        st.session_state.chat_history = [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": user_input}]
 
     # Limit chat history length and remove oldest message if necessary
     max_history_length = 10
     if len(st.session_state.chat_history) > max_history_length:
         st.session_state.chat_history.pop(0)
 
-    # Check if the new question is related to the previous ones
-    related = is_question_related(user_input, st.session_state.chat_history)
-
-    # If the new question is not related, remove previous user messages from chat history
-    if not related:
-        st.session_state.chat_history = [message for message in st.session_state.chat_history if message["role"] != "user"]
-
     # Get model response and add it to chat history
     response = chat_with_gpt3(st.session_state.chat_history)
     st.session_state.chat_history.append({"role": "assistant", "content": response})
-    
+
+    # Display the conversation
+    for message in st.session_state.chat_history:
+        if message["role"] == "user":
+            st.write(f"<strong>{message['role'].capitalize()}</strong>: {message['content']}", unsafe_allow_html=True)
+        else:
+            st.write(f"{message['role'].capitalize()}: {message['content']}")
     # Clear the user input
     user_input = ""
-    
-# Display the conversation
-for message in st.session_state.chat_history:
-    if message["role"] == "user":
-        st.write(f"User: {message['content']}")
-    else:
-        st.write(f"Assistant: {message['content']}")
-
-
