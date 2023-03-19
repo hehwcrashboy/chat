@@ -85,7 +85,8 @@ if submit_button:
     st.session_state.chat_history.append({"role": "assistant", "content": response})
 
     # Clear the user input
-    st.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="user_input")
+    input_container.empty()
+    user_input = ""
 
     # Update the conversation display
     display_conversation()
