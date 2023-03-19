@@ -68,9 +68,10 @@ def display_conversation():
 
 display_conversation()
 
-user_input = st.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="user_input")
+user_input = input_container.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="user_input")
 submit_button = st.button("Submit", key="submit_button")
 
+input_container = st.empty()
 if submit_button:
     # Add user message to chat history
     st.session_state.chat_history.append({"role": "user", "content": user_input})
