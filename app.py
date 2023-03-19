@@ -91,7 +91,9 @@ if submit_button:
 
     # Clear the user input
     input_container.empty()
-    user_input = ""
 
     # Update the conversation display
     display_conversation()
+
+    # Redisplay the input container
+    user_input = input_container.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="bottom_user_input")
