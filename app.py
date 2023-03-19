@@ -1,29 +1,37 @@
 import openai
 import streamlit as st
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# Initialize chat history
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [{"role": "system", "content": "You are a helpful assistant."}]
 
-tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/paraphrase-xlm-r-multilingual-v1")
-model = AutoModel.from_pretrained("sentence-transformers/paraphrase-xlm-r-multilingual-v1")
+tokenizer = AutoTokenizer.from_pretrained("bert-base-cased-finetuned-mrpc")
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased-finetuned-mrpc")
 
-def compute_similarity(text1, text2):
-    inputs1 = tokenizer(text1, return_tensors="pt")
-    inputs2 = tokenizer(text2, return_tensors="pt")
-    with torch.no_grad():
-        embeddings1 = model(**inputs1).last_hidden_state.mean(dim=1)
-        embeddings2 = model(**inputs2).last_hidden_state.mean(dim=1)
-    cos_sim = torch.nn.functional.cosine_similarity(embeddings1, embeddings2).item()
-    return cos_sim
-
-def is_question_related(new_question, chat_history, similarity_threshold=0.7):
-    for message in chat_history:
+def is_question_related(new_question, chat_history):
+    threshold = 0.85
+    # Retrieve the last user message from chat history
+    last_user_message = ""
+    for message in reversed(chat_history):
         if message["role"] == "user":
-            similarity = compute_similarity(new_question, message["content"])
-            if similarity >= similarity_threshold:
-                return True
-    return False
+            last_user_message = message["content"]
+            break
+
+    # If there is no previous user message, return False
+    if not last_user_message:
+        return False
+
+    # Compute the similarity between the new question and the last user message
+    text_pair = [new_question, last_user_message]
+    encoded_input = tokenizer(text_pair, padding=True, truncation=True, return_tensors="pt")
+    with torch.no_grad():
+        scores = model(**encoded_input)[0]
+
+    similarity_score = torch.softmax(scores, dim=1).tolist()[0][1]
+
+    return similarity_score > threshold
 
 def chat_with_gpt3(messages):
     model_engine = "gpt-3.5-turbo"
@@ -45,10 +53,6 @@ def chat_with_gpt3(messages):
 
 st.title("ChatGPT with Streamlit")
 
-# Initialize chat history
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [{"role": "system", "content": "You are a helpful assistant."}]
-
 st.write("<style>body{margin: 0; padding: 0;}</style>", unsafe_allow_html=True)
 conversation_history = st.empty()
 
@@ -57,40 +61,31 @@ def display_conversation():
     conversation_history.markdown("---")
     for message in st.session_state.chat_history:
         if message["role"] == "user":
-            conversation_history.markdown(
-                f"<div style='background-color: white; padding: 10px; border-radius: 5px;'><strong><img src='https://i.imgur.com/0n7vG8E.png' width='25px' style='vertical-align:middle;'> {message['content']}</strong></div>",
-                unsafe_allow_html=True,
-            )
+            conversation_history.write(f"<div style='background-color: white; padding: 10px; border-radius: 5px;'><strong><img src='https://i.imgur.com/0n7vG8E.png' width='25px' style='vertical-align:middle;'> {message['content']}</strong></div>", unsafe_allow_html=True)
         else:
-            conversation_history.markdown(
-                f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 5px;'><img src='https://i.imgur.com/9X45lgs.png' width='25px' style='vertical-align:middle;'> {message['content']}</div>",
-                unsafe_allow_html=True,
-            )
+            conversation_history.write(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 5px;'><img src='https://i.imgur.com/9X45lgs.png' width='25px' style='vertical-align:middle;'> {message['content']}</div>", unsafe_allow_html=True)
     conversation_history.markdown("---")
 
 display_conversation()
 
-# User input and submit button
-with st.form(key='input_form'):
-    user_input = st.text_area("Ask a question, enter a conversation, or request a translation:", key='user_input', height=50)
-    submit_button = st.form_submit_button("Submit")
+user_input = st.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="user_input")
+submit_button = st.button("Submit", key="submit_button")
 
 if submit_button:
     # Add user message to chat history
     st.session_state.chat_history.append({"role": "user", "content": user_input})
 
-    # Check if the new question is related to the chat history
-    if is_question_related(user_input, st.session_state.chat_history):
-        relevant_history = st.session_state.chat_history
-    else:
-        relevant_history = [{"role": "system", "content": "You are a helpful assistant."}]
+    # Limit chat history length and remove oldest message if necessary
+    max_history_length = 10
+    if len(st.session_state.chat_history) > max_history_length:
+        st.session_state.chat_history.pop(0)
 
     # Get model response and add it to chat history
-    response = chat_with_gpt3(relevant_history)
+    response = chat_with_gpt3(st.session_state.chat_history)
     st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-    # Display the conversation
-    display_conversation()
-
     # Clear the user input
-    st.form(key='input_form').clear_on_submit()
+    st.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="user_input")
+
+    # Update the conversation display
+    display_conversation()
