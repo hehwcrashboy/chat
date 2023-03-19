@@ -53,8 +53,13 @@ def chat_with_gpt3(messages):
 
 st.title("ChatGPT with Streamlit")
 
-st.write("<style>body{margin: 0; padding: 0;}</style>", unsafe_allow_html=True)
-conversation_history = st.empty()
+def initialize_app():
+    st.write("<style>body{margin: 0; padding: 0;}</style>", unsafe_allow_html=True)
+    conversation_history = st.empty()
+    input_container = st.empty()
+    return conversation_history, input_container
+
+conversation_history, input_container = initialize_app()
 
 # Display the conversation
 def display_conversation():
@@ -71,7 +76,6 @@ display_conversation()
 user_input = input_container.text_input("Ask a question, enter a conversation, or request a translation:", value="", key="bottom_user_input")
 submit_button = st.button("Submit", key="submit_button")
 
-input_container = st.empty()
 if submit_button:
     # Add user message to chat history
     st.session_state.chat_history.append({"role": "user", "content": user_input})
