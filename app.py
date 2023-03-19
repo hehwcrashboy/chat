@@ -75,13 +75,15 @@ if submit_button:
     # Get model response and add it to chat history
     response = chat_with_gpt3(st.session_state.chat_history)
     st.session_state.chat_history.append({"role": "assistant", "content": response})
-
-    # Display the conversation
-    for message in st.session_state.chat_history:
-        if message["role"] == "user":
-            st.write(f"User: {message['content']}")
-        else:
-            st.write(f"Assistant: {message['content']}")
-
+    
     # Clear the user input
     user_input = ""
+    
+# Display the conversation
+for message in st.session_state.chat_history:
+    if message["role"] == "user":
+        st.write(f"User: {message['content']}")
+    else:
+        st.write(f"Assistant: {message['content']}")
+
+
