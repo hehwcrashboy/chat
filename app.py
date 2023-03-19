@@ -56,9 +56,10 @@ st.title("ChatGPT with Streamlit")
 def initialize_app():
     st.write("<style>body{margin: 0; padding: 0;}</style>", unsafe_allow_html=True)
     conversation_history = st.empty()
-    return conversation_history, input_container
+    return conversation_history
 
-conversation_history, input_container = initialize_app()
+conversation_history = initialize_app()
+input_container = st.empty()
 
 # Display the conversation
 def display_conversation():
