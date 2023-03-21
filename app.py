@@ -33,10 +33,10 @@ def chat_with_gpt3(messages):
     response = openai.ChatCompletion.create(
         model=model_engine,
         messages=messages,
-        max_tokens=2000,
+        max_tokens=4000,
         n=1,
         stop=None,
-        temperature=0.8,
+        temperature=0.6,
         top_p=1.0,
         frequency_penalty=0.0,
         presence_penalty=0.0,
